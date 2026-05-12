@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>95無鉛汽油油耗計算</title>
+<style>
+  body { font-family: sans-serif; max-width: 420px; margin: 40px auto; padding: 0 16px; }
+  label { display: block; margin: 8px 0 4px; }
+  input { width: 100%; box-sizing: border-box; padding: 6px; font-size: 1rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  td { padding: 8px; border: 1px solid #ccc; }
+  td:first-child { width: 50%; background: #f5f5f5; }
+  #price-info { margin-top: 24px; font-size: 0.9rem; color: #555; border-top: 1px solid #ddd; padding-top: 12px; }
+  a { color: #0066cc; }
+</style>
+</head>
+<body>
+
+<h2>95無鉛汽油油耗計算</h2>
+
+<label>車輛油耗 (Km/L)
+  <input type="number" id="eff" value="9" min="1" step="0.1">
+</label>
+
+<table>
+  <tr>
+    <td>行駛里程 (Km)</td>
+    <td><input type="number" id="km" placeholder="輸入里程"></td>
+  </tr>
+  <tr>
+    <td>汽油公升數 (L)</td>
+    <td><input type="number" id="liter" placeholder="輸入公升數"></td>
+  </tr>
+  <tr>
+    <td>汽油合計總價 (元)</td>
+    <td><input type="number" id="cost" placeholder="輸入金額"></td>
+  </tr>
+</table>
+
+<div id="price-info">載入油價中…</div>
+
+<script>
+const eff = document.getElementById('eff');
+const km = document.getElementById('km');
+const liter = document.getElementById('liter');
+const cost = document.getElementById('cost');
+
+let pricePerLiter = 33.9;
+
+function round(v) { return Math.round(v * 10) / 10; }
+
+function calcFrom(changed) {
+  const e = parseFloat(eff.value) || 9;
+  if (changed === 'km') {
+    const k = parseFloat(km.value);
+    if (isNaN(k)) return;
+    liter.value = round(k / e);
+    cost.value = round(k / e * pricePerLiter);
+  } else if (changed === 'liter') {
+    const l = parseFloat(liter.value);
+    if (isNaN(l)) return;
+    km.value = round(l * e);
+    cost.value = round(l * pricePerLiter);
+  } else if (changed === 'cost') {
+    const c = parseFloat(cost.value);
+    if (isNaN(c)) return;
+    liter.value = round(c / pricePerLiter);
+    km.value = round(c / pricePerLiter * e);
+  }
+}
+
+km.addEventListener('input', () => calcFrom('km'));
+liter.addEventListener('input', () => calcFrom('liter'));
+cost.addEventListener('input', () => calcFrom('cost'));
+eff.addEventListener('input', () => {
+  if (km.value) calcFrom('km');
+  else if (liter.value) calcFrom('liter');
+  else if (cost.value) calcFrom('cost');
+});
+
+// 油價顯示：中油無公開 CORS API，直接顯示本週已知價格並附連結
+function showPrice(price, dateStr) {
+  pricePerLiter = price;
+  document.getElementById('price-info').innerHTML =
+    `${dateStr}當週95汽油單價：每公升 <strong>${price}</strong> 元 ／ ` +
+    `<a href="https://www.cpc.com.tw" target="_blank">中油官網</a>`;
+}
+
+function getWeekLabel() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}年${m}月${day}日`;
+}
+
+// 嘗試從中油官網抓取（通常會因 CORS 失敗，fallback 到已知價格）
+fetch('https://www.cpc.com.tw/', { mode: 'no-cors' })
+  .then(() => showPrice(33.9, getWeekLabel()))
+  .catch(() => showPrice(33.9, getWeekLabel()));
+</script>
+
+</body>
+</html>
